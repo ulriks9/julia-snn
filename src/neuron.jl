@@ -1,3 +1,4 @@
+#computes the next value for v at a timestep with size dt
 function compute(in, dt, tau, v_t, v_0, v)
     dv = -1 * (v - v_0) / tau
     dv += in
