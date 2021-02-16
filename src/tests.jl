@@ -1,22 +1,20 @@
 include(string(@__DIR__)[1:24] * "\\dependencies.jl")
-
 include("network.jl")
 include("inputs.jl")
 
 global input_res = length(gen_inputs("media\\training\\ytrk.wav")[:,1])
 
-function sim_vlevels(n)
-    l = cycle(layer_1, inputs, synapses)
-    l_t = l[1,n,:]
-    plot(l_t)
+function gen_params()
+    Params(#= dt =# 1 / 2, #= tau =# 3, #= v_t =# 30, #= v_0 =# -70, #= v =# -55)
 end
 
 function v_sim()
     layers = getLayers()
     synapses = getSynapses()
     inputs = gen_inputs("media\\training\\ytrk.wav")
+    params = gen_params()
 
-    l = cycle(layers, inputs, synapses)
+    l = cycle(layers, inputs, synapses, params)
 
     v_levels = l[1]
     v_levels = v_levels[2,1,:]
