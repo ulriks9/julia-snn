@@ -1,9 +1,10 @@
+include(string(@__DIR__)[1:24] * "\\dependencies.jl")
 include("synapse.jl")
 include("neuron.jl")
 
 function cycle(layers, inputs, synapses)
     #size of timestep, set to 1 for the timestep size of the song
-    dt = 1 / 5
+    dt = 1 / 2
     #simulation time, set to the amount of timesteps of the song
     t_s = length(inputs[1,:])
     #time constant

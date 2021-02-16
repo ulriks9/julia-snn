@@ -1,6 +1,4 @@
-using WAV
-using DSP
-using LinearAlgebra
+include(string(@__DIR__)[1:24] * "\\dependencies.jl")
 #generates a signal that can be processed by the network
 #uses WAV and DSP to convert to signal
 #25ms Hanning window

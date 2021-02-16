@@ -1,5 +1,5 @@
-using Plots
-using CUDA
+include(string(@__DIR__)[1:24] * "\\dependencies.jl")
+
 include("network.jl")
 include("inputs.jl")
 
@@ -19,20 +19,22 @@ function v_sim()
     l = cycle(layers, inputs, synapses)
 
     v_levels = l[1]
+    v_levels = v_levels[2,1,:]
+    v_levels = Float32.(v_levels)
 
-    plot(v_levels[2,1,:])
+    plot(v_levels)
 end
 
 function s_sim()
     layers = getLayers()
     synapses = getSynapses()
-    inputs = getInputs()
+    inputs = gen_inputs("media\\training\\ytrk.wav")
 
     l = cycle(layers, inputs, synapses)
 
     spikes = l[2]
 
-    plot(v_levels[1,1,:])
+    plot(l[1,1,:])
 end
 
 function getLayers()
