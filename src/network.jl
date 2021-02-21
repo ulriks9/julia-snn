@@ -31,36 +31,28 @@ function cycle(layers, inputs, synapses, p::Params)
                 #different step for first layer
                 if m == 1
                     #computes next voltage level
-                    v = compute(inputs[n,pos], p.dt, p.tau, p.v_t, p.v_0, layers[n,m])
+                    #v = compute(inputs[n,pos], p.dt, p.tau, p.v_t, p.v_0, layers[n,m])
+                    v = compute(inputs[n,pos], layers[n,m], synapses[n,m], p)
                     #computes weighted voltage
-                    v = compute(v, synapses[n,m])
+                    #v = compute(v, synapses[n,m])
                 else
                     #sums outputs from previous layer NOT SURE HOW TO SUM
                     for o = 1 : input_res
                         #computes next voltage level
-                        vt = compute(layers[o,m-1], p.dt, p.tau, p.v_t, p.v_0, layers[n,m])
+                        v += p.s * compute(layers[o,m-1], layers[n,m], synapses[n,m], p)
                         #computes weighted voltage
-                        v += compute(vt, synapses[o,m])
+                        #v += compute(vt, synapses[o,m])
                     end
                 end
-
-                #Current injection, only used for simulating neurons individually
-                if t > 2 && t < 4
-                    #v += 3.5
-                end
-
-                #used mostly for logging
-                v_array[n,m,i] = v
-
                 #if voltage is above threshold, produce spike
-                if v_array[n,m,i] >= p.v_t
-                    spikes[n,m,i] = p.v_t
-                    #not sure if this should be v_0 or compute(v_0, synapses[n,m])
-                    layers[n,m] = compute(p.v_0, synapses[n,m])
+                if v >= p.v_t
+                    spikes[n,m,i] = 1
+                    layers[n,m] = p.v_0
+                    v_array[n,m,i] = p.v_0
+                else
+                    v_array[n,m,i] = v
+                    layers[n,m] = v
                 end
-
-                #used for temporarily storing postsynaptic voltage levels
-                layers[n,m] = v
             end
         end
         t += p.dt

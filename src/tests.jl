@@ -5,20 +5,22 @@ include("inputs.jl")
 global input_res = length(gen_inputs("media\\training\\ytrk.wav")[:,1])
 
 function gen_params()
-    Params(#= dt =# 1 / 2, #= tau =# 3, #= v_t =# 30, #= v_0 =# -70, #= v =# -55)
+    Params(#= dt =# 1 / 2, #= tau =# 1, #= v_t =# 30, #= v_0 =# -70, #= v =# -70, #= s =# 0.1)
 end
 
 function v_sim()
     layers = getLayers()
     synapses = getSynapses()
-    inputs = gen_inputs("media\\training\\ytrk.wav")
+    inputs = gen_inputs("media\\training\\GTZAN\\rock\\rock.00000.wav")
+    #scale up inputs (should change to normalization)
+    inputs = scale(inputs, 0, 500)
     params = gen_params()
 
     l = cycle(layers, inputs, synapses, params)
 
     v_levels = l[1]
-    v_levels = v_levels[2,1,:]
-    v_levels = Float32.(v_levels)
+    v_levels = v_levels[1,1,:]
+    v_levels = resize!(v_levels, 100)
 
     plot(v_levels)
 end
@@ -27,12 +29,13 @@ function s_sim()
     layers = getLayers()
     synapses = getSynapses()
     inputs = gen_inputs("media\\training\\ytrk.wav")
+    params = gen_params()
 
-    l = cycle(layers, inputs, synapses)
+    l = cycle(layers, inputs, synapses, params)
 
     spikes = l[2]
 
-    plot(l[1,1,:])
+    plot(spikes[1,1,:])
 end
 
 function getLayers()
@@ -70,4 +73,14 @@ function getInputs()
     inputs = map(x -> rand() > 0.99 ? x = x + 100 : x = x, inputs)
 
     inputs
+end
+#scales array between specified range
+function scale(arr, a, b)
+    max = maximum(arr)
+    min = minimum(arr)
+
+    for i = 1:length(arr)
+        arr[i] = ((b - a) * (arr[i] - min) / (max - min)) + a
+    end
+    arr
 end
