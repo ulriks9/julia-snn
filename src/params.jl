@@ -11,4 +11,6 @@ struct Params
     v::Int8
     #summing constant
     s::Float64
+    #refractory period
+    ref::Float64
 end
