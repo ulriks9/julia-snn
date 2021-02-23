@@ -6,7 +6,7 @@ include("params.jl")
 global input_res = length(gen_inputs("media\\training\\GTZAN\\rock\\rock.00000.wav")[:,1])
 
 function gen_params()
-    Params(#= dt =# 1 / 10, #= tau =# 10, #= v_t =# 30, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00)
+    Params(#= dt =# 1 / 10, #= tau =# 4, #= v_t =# 30, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00)
 end
 
 function v_sim()
@@ -18,9 +18,9 @@ function v_sim()
     l = cycle(layers, inputs, synapses, params)
 
     v_levels = l[1]
-    v_levels = v_levels[1,2,:]
+    v_levels = v_levels[2,1,:]
     #used for smaller plots
-    v_levels = resize!(v_levels, 38)
+    v_levels = resize!(v_levels, 100)
 
     plot(v_levels)
 end

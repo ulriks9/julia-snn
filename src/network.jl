@@ -3,7 +3,7 @@ include("synapse.jl")
 include("neuron.jl")
 include("params.jl")
 
-#sets neurons spiked to rest
+#sets neurons spiked to reset
 function l_reset(l, p::Params)
     for i = 1:length(l)
         if l[i] >= p.v_t
