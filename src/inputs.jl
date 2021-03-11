@@ -2,7 +2,7 @@ include(string(@__DIR__)[1:24] * "\\dependencies.jl")
 #generates a signal that can be processed by the network
 #uses WAV and DSP to convert to signal
 #25ms Hanning window
-function gen_inputs(path::String)
+function get_spectro(path::String)
     id = wavread(path)
     i = id[1]
     i = power(spectrogram(i[:,1], round(Int, 25e-3 * id[2]), window=hanning))
@@ -18,4 +18,11 @@ function scale(arr, a, b)
         arr[i] = ((b - a) * (arr[i] - min) / (max - min)) + a
     end
     arr
+end
+#extracts MFCCs from specified WAV file
+function get_mfcc(path::AbstractString)
+    w = wavread(path)
+    a = w[1]
+    m = mfcc(a, w[2])
+    scale(m[1], 0, 100)
 end

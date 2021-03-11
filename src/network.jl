@@ -15,9 +15,9 @@ end
 
 function cycle(layers, inputs, synapses, p::Params)
     #simulation time, set to the amount of timesteps of the song
-    t_s = length(inputs[1,:])
+    t_s = length(inputs[:,1])
     #input resolution of environment, set to the amount of frequencies of the song
-    input_res = length(inputs[:,1])
+    input_res = length(inputs[1,:])
     #array of spike times
     spikes = zeros(input_res, length(layers[1,:]), convert(Int, t_s / p.dt))
     #monitoring of voltage levels
