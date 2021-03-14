@@ -6,7 +6,7 @@ include("params.jl")
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
 function gen_params()
-    Params(#= dt =# 1 / 10, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00)
+    Params(#= dt =# 1 / 10, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00, #= cl =# 10)
 end
 
 function v_sim()
@@ -46,16 +46,15 @@ function s_sim()
 end
 
 function getLayers()
-    v = -55
     #input layer
     layer_1 = zeros(input_res)
-    fill!(layer_1, v)
+    fill!(layer_1, p.v)
     #hidden layer
     layer_2 = zeros(input_res)
-    fill!(layer_2, v)
+    fill!(layer_2, p.v)
     #contains both layers
     layers = zeros(input_res, 2)
-    fill!(layers, v)
+    fill!(layers, p.v)
 
     layers
 end
@@ -65,4 +64,9 @@ function getSynapses()
     synapses[:,1] .= 1.34
     synapses[:,2] .= rand(Uniform(1000,100000))
     synapses
+end
+
+function getClasses()
+    classes = zeros(p.cl)
+
 end

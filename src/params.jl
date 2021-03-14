@@ -13,4 +13,6 @@ struct Params
     s::Float64
     #refractory period
     ref::Float64
+    #number of classes
+    cl::Int8
 end
