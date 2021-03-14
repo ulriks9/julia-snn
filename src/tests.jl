@@ -5,15 +5,15 @@ include("params.jl")
 
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
-function gen_params()
+function get_params()
     Params(#= dt =# 1 / 10, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00, #= cl =# 10)
 end
 
 function v_sim()
-    layers = getLayers()
-    synapses = getSynapses()
+    layers = get_layers()
+    synapses = get_synapses()
     inputs = get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")
-    params = gen_params()
+    params = get_params()
 
     l = cycle(layers, inputs, synapses, params)
 
@@ -28,10 +28,10 @@ function v_sim()
 end
 
 function s_sim()
-    layers = getLayers()
-    synapses = getSynapses()
+    layers = get_layers()
+    synapses = get_synapses()
     inputs = gen_inputs("media\\training\\GTZAN\\rock\\rock.00000.wav")
-    params = gen_params()
+    params = get_params()
 
     l = cycle(layers, inputs, synapses, params)
 
@@ -45,7 +45,7 @@ function s_sim()
     ylabel!("Membrane Potential (mV)")
 end
 
-function getLayers()
+function get_layers()
     #input layer
     layer_1 = zeros(input_res)
     fill!(layer_1, p.v)
@@ -59,14 +59,13 @@ function getLayers()
     layers
 end
 
-function getSynapses()
+function get_synapses()
     synapses = rand(input_res, 2)
     synapses[:,1] .= 1.34
     synapses[:,2] .= rand(Uniform(1000,100000))
     synapses
 end
-
-function getClasses()
-    classes = zeros(p.cl)
-
+#returns output layer
+function get_classes()
+    fill(p.v, p.cl)
 end
