@@ -5,3 +5,7 @@ using CUDA
 using LinearAlgebra
 using Distributions
 using MFCC
+using DataStreams
+using CSV
+using DataFrames
+using BenchmarkTools

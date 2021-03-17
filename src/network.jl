@@ -1,13 +1,15 @@
-include(string(@__DIR__)[1:24] * "\\dependencies.jl")
+include("dependencies.jl")
 include("synapse.jl")
 include("neuron.jl")
 include("params.jl")
 
 #sets neurons spiked to reset
 function l_reset(l, p::Params)
-    for i = 1:length(l)
-        if l[i] >= p.v_t
-            l[i] = p.v_0
+    for i = 1 : length(l)
+        for j = length(l[i])
+            if l[i][j] >= p.v_t
+                l[i][j] = p.v_0
+            end
         end
     end
     l
@@ -19,11 +21,16 @@ function cycle(layers, inputs, synapses, p::Params)
     #input resolution of environment, set to the amount of frequencies of the song
     input_res = length(inputs[1,:])
     #array of spike times
-    spikes = zeros(input_res, length(layers[1,:]), convert(Int, t_s / p.dt))
+    spikes = Array{Array}(UndefInitializer(), convert(Int, t_s / p.dt))
     #monitoring of voltage levels
-    v_array = zeros(input_res, length(layers[1,:]), convert(Int, t_s / p.dt))
+    v_array = Array{Array}(UndefInitializer(), convert(Int, t_s / p.dt))
+    #initializes arrays with correct structure
+    for x = 1 : length(spikes)
+        spikes[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
+        v_array[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
+    end
     #refractory periods
-    ref = zeros(input_res, length(layers[1,:]))
+    ref = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
     #index
     i = 1
     #time set to 0
@@ -36,39 +43,40 @@ function cycle(layers, inputs, synapses, p::Params)
     while t < t_s - p.dt
         layers = l_reset(layers, p)
 
-        for m = 1 : length(layers[1,:])
-            for n = 1 : input_res
+        for m = 1 : length(layers)
+            for n = 1 : length(layers[m])
                 #checks if neuron is recovering from a spike
-                if ref[n,m] > 0
-                    v_array[n,m,i] = p.v_0
-                    layers[n,m] = p.v_0
-                    spikes[n,m,i] = 0
-                    ref[n,m] -= 1
+                if ref[m][n] > 0
+                    v_array[i][m][n] = p.v_0
+                    layers[m][n] = p.v_0
+                    spikes[i][m][n] = 0
+                    ref[m][n] -= 1
                     continue
                 end
                 #different step for first layer
                 if m == 1
                     #computes new voltage level
-                    v = layers[n,m] + compute(inputs[n,pos], layers[n,m], synapses[n,m], p)
+                    v = layers[m][n] + compute(inputs[pos,n], layers[m][n], synapses[m][n], p)
                 else
-                    #sums outputs from previous layer NOT SURE HOW TO SUM
-                    for o = 1 : input_res
-                        #v += p.s * compute(spikes[o,m-1,i], layers[n,m], synapses[n,m], p)
-                        vt = compute(spikes[o,m-1,i], layers[n,m], synapses[n,m], p)
+                    #sums outputs from previous layer
+                    for o = 1 : length(layers[m-1])
+                        #v += p.s * compute(spikes[o,m-1,i], layers[m][n], synapses[m][n], p)
+                        vt = compute(spikes[i][m-1][o], layers[m][n], synapses[m][n], p)
                         #net activation from input neurons
-                        layers[n,m] += vt
+                        layers[m][n] += vt
                     end
-                    v = layers[n,m]
+                    v = layers[m][n]
                 end
                 #if voltage is above threshold, produce spike
                 if v >= p.v_t
-                    spikes[n,m,i] = p.v_t
-                    layers[n,m] = p.v_t
-                    v_array[n,m,i] = p.v_t
-                    ref[n,m] = 1
+                    spikes[i][m][n] = p.v_t
+                    layers[m][n] = p.v_t
+                    v_array[i][m][n] = p.v_t
+                    ref[m][n] = 1
                 else
-                    v_array[n,m,i] = v
-                    layers[n,m] = v
+                    v_array[i][m][n] = v
+                    layers[m][n] = v
+                    spikes[i][m][n] = 0
                 end
             end
         end

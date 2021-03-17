@@ -8,11 +8,13 @@ struct Params
     #resting voltage in mV
     v_0::Int8
     #start voltage
-    v::Int8
+    v::Float64
     #summing constant
     s::Float64
     #refractory period
     ref::Float64
     #number of classes
     cl::Int8
+    #number of hidden neurons
+    hid::Int8
 end

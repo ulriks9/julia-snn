@@ -1,4 +1,4 @@
-include(string(@__DIR__)[1:24] * "\\dependencies.jl")
+include("dependencies.jl")
 include("network.jl")
 include("inputs.jl")
 include("params.jl")
@@ -6,21 +6,18 @@ include("params.jl")
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
 function get_params()
-    Params(#= dt =# 1 / 10, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00, #= cl =# 10)
+    Params(#= dt =# 1 / 8, #= tau =# 10, #= v_t =# 20, #= v_0 =# -70, #= v =# -55, #= s =# 0.001, #= ref =# 0.00, #= cl =# 10, #= hid =# 20)
 end
 
 function v_sim()
     layers = get_layers()
     synapses = get_synapses()
     inputs = get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")
-    params = get_params()
+    p = get_params()
 
-    l = cycle(layers, inputs, synapses, params)
+    l = cycle(layers, inputs, synapses, p)
 
-    v_levels = l[1]
-    v_levels = v_levels[1,1,:]
-    #used for smaller plots
-    v_levels = resize!(v_levels, floor(Int, length(v_levels) / 50))
+    v_levels = get_parray(l[1], 1, 5, 100)
 
     plot(v_levels)
     xlabel!("Time")
@@ -30,42 +27,33 @@ end
 function s_sim()
     layers = get_layers()
     synapses = get_synapses()
-    inputs = gen_inputs("media\\training\\GTZAN\\rock\\rock.00000.wav")
-    params = get_params()
+    inputs = get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")
+    p = get_params()
 
-    l = cycle(layers, inputs, synapses, params)
+    l = cycle(layers, inputs, synapses, p)
 
-    s = l[2]
-    s = s[1,1,:]
-    #used for smaller plots
-    s = resize!(s, 500)
+    s = get_parray(l[2], 1, 5, 100)
 
     plot(s)
     xlabel!("Time")
     ylabel!("Membrane Potential (mV)")
 end
-
+#returns array of layers
 function get_layers()
-    #input layer
-    layer_1 = zeros(input_res)
-    fill!(layer_1, p.v)
-    #hidden layer
-    layer_2 = zeros(input_res)
-    fill!(layer_2, p.v)
-    #contains both layers
-    layers = zeros(input_res, 2)
-    fill!(layers, p.v)
-
-    layers
+    p = get_params()
+    [fill(p.v, input_res), fill(p.v, p.hid), fill(p.v, p.cl)]
 end
-
+#returns array of synapses
 function get_synapses()
-    synapses = rand(input_res, 2)
-    synapses[:,1] .= 1.34
-    synapses[:,2] .= rand(Uniform(1000,100000))
-    synapses
+    p = get_params()
+    #first layer is set to ones, as these weights will not change
+    [ones(input_res), rand(p.hid), rand(p.cl)]
 end
-#returns output layer
-function get_classes()
-    fill(p.v, p.cl)
+
+function get_parray(in, l, n, c)
+    a = zeros(length(in))
+    for i = 1 : length(in)
+        a[i] = in[i][l][n]
+    end
+    resize!(a, c)
 end

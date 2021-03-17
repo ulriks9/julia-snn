@@ -1,4 +1,4 @@
-include(string(@__DIR__)[1:24] * "\\dependencies.jl")
+include("dependencies.jl")
 #generates a signal that can be processed by the network
 #uses WAV and DSP to convert to signal
 #25ms Hanning window
@@ -22,7 +22,6 @@ end
 #extracts MFCCs from specified WAV file
 function get_mfcc(path::AbstractString)
     w = wavread(path)
-    a = w[1]
-    m = mfcc(a, w[2])
-    scale(m[1], 0, 100)
+    m = mfcc(w[1], w[2])
+    scale(m[1], 0, 10000)
 end
