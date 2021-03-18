@@ -23,5 +23,5 @@ end
 function get_mfcc(path::AbstractString)
     w = wavread(path)
     m = mfcc(w[1], w[2])
-    scale(m[1], 0, 10000)
+    scale(m[1], 0, 1)
 end
