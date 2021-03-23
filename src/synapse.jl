@@ -8,3 +8,7 @@ function stdp(pre, post, p)
         -p.a_minus * exp(delta_t / p.tau_minus)
     end
 end
+#resets the synapses to the standard of get_synapses()
+function reset_synapses()
+    save_arr(get_synapses(), "data\\synapses.jld")
+end

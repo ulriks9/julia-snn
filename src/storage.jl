@@ -17,3 +17,19 @@ function load_csv(path)
     #returns the column at index :A
     d[!, :A]
 end
+#saves array in JLD format
+function save_arr(arr, path::AbstractString)
+    @save path arr
+end
+#loads JLD file
+function load_arr(path::AbstractString)
+    f = jldopen(path, mmaparrays=true)
+    convert_file(f["arr"])
+end
+#converts from JLD's array format to something the network can use
+function convert_file(file)
+    layer_1 = file[1][1]
+    layer_2 = file[2][1]
+
+    [layer_1, layer_2]
+end

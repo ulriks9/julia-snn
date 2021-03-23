@@ -2,6 +2,7 @@ include("dependencies.jl")
 include("synapse.jl")
 include("neuron.jl")
 include("params.jl")
+include("storage.jl")
 
 #sets neurons spiked to reset
 function l_reset(l, p::Params)
@@ -22,11 +23,13 @@ function cycle(layers, inputs, synapses, p::Params)
     input_res = length(inputs[1,:])
     #array of spike times
     spikes = Array{Array}(UndefInitializer(), convert(Int, t_s / p.dt))
+    stdp_spikes = Array{Array}(UndefInitializer(), convert(Int, t_s / p.dt))
     #monitoring of voltage levels
     v_array = Array{Array}(UndefInitializer(), convert(Int, t_s / p.dt))
     #initializes arrays with correct structure
     for x = 1 : length(spikes)
         spikes[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
+        stdp_spikes[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
         v_array[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
     end
     #refractory periods
@@ -51,14 +54,15 @@ function cycle(layers, inputs, synapses, p::Params)
                     v_array[i][m][n] = p.v_0
                     layers[m][n] = p.v_0
                     spikes[i][m][n] = 0
+                    stdp_spikes[i][m][n] = 0
                     ref[m][n] -= 1
                     continue
                 end
                 #different step for first layer
                 if m == 1
                     #computes new voltage level
-                    #instead of passing a synapse as parameter, it uses 1 for the input layer
-                    v = layers[m][n] + compute(inputs[pos,n], layers[m][n], 1, p)
+                    #instead of passing a synapse as parameter, it uses p.in_w for the input layer
+                    v = layers[m][n] + compute(inputs[pos,n], layers[m][n], p.in_w, p)
                 else
                     #sums outputs from previous layer
                     for o = 1 : length(layers[m-1])
@@ -71,13 +75,13 @@ function cycle(layers, inputs, synapses, p::Params)
                 #if voltage is above threshold, produce spike
                 if v >= p.v_t
                     spikes[i][m][n] = p.v_t
+                    stdp_spikes[i][m][n] = p.v_t
                     layers[m][n] = p.v_t
                     v_array[i][m][n] = p.v_t
                     ref[m][n] = 1
                 else
                     v_array[i][m][n] = v
                     layers[m][n] = v
-                    spikes[i][m][n] = 0
                 end
                 #occurs every p.win timesteps
                 #current implementation of STDP
@@ -88,7 +92,8 @@ function cycle(layers, inputs, synapses, p::Params)
                     t_pre = t_start
                     t_post = t_start
                     #creates a sub array of spikes in the time window specified
-                    temp_spikes = spikes[t_start:t_end]
+                    #might need some other way to temporarily store spikes
+                    temp_spikes = stdp_spikes[t_start:t_end]
                     #iterates through layers, starts at 2 as layer 1 has constant weights
                     for x = 2 : length(layers)
                         #iterates through neurons of that layer
@@ -101,16 +106,16 @@ function cycle(layers, inputs, synapses, p::Params)
                                     #iterates through neurons of previous layer
                                     for a = 1 : length(layers[x-1])
                                         not_found = true
-                                        count = 0
+                                        count = 1
                                         #iterates through timesteps in window
                                         while not_found && count < p.win
-                                            #finds when pre neuron spiked
-                                            if temp_spikes[b][x-1][y] > 0
-                                                t_pre = t_start + b
+                                            #finds when pre neuron spiked EITHER a or y
+                                            if temp_spikes[count][x-1][a] > 0
+                                                t_pre = t_start + count
                                                 #updates weight for synapse to the post neuron
-                                                synapses[x][y][a] += stdp(t_pre, t_post, p)
+                                                synapses[x-1][y][a] += stdp(t_pre, t_post, p)
                                                 #removes spike examined from the array of spikes to not analyse the same spike twice
-                                                temp_spikes[b][x-1][y] = 0
+                                                temp_spikes[count][x-1][a] = 0
                                                 not_found = false
                                             end
                                             count += 1
@@ -133,5 +138,5 @@ function cycle(layers, inputs, synapses, p::Params)
             pos += 1
         end
     end
-    [v_array, spikes]
+    [v_array, spikes, synapses]
 end

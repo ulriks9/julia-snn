@@ -25,4 +25,6 @@ struct Params
     tau_plus::Float64
     #tau minus STDP parameter
     tau_minus::Float64
+    #weight for input neurons (scales inputs)
+    in_w::Float64
 end
