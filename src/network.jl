@@ -17,6 +17,8 @@ function l_reset(l, p::Params)
 end
 
 function cycle(layers, inputs, synapses, p::Params)
+    #useful for setting parameters
+    stdp_counter = 0
     #simulation time, set to the amount of timesteps of the song
     t_s = length(inputs[:,1])
     #input resolution of environment, set to the amount of frequencies of the song
@@ -92,7 +94,6 @@ function cycle(layers, inputs, synapses, p::Params)
                     t_pre = t_start
                     t_post = t_start
                     #creates a sub array of spikes in the time window specified
-                    #might need some other way to temporarily store spikes
                     temp_spikes = stdp_spikes[t_start:t_end]
                     #iterates through layers, starts at 2 as layer 1 has constant weights
                     for x = 2 : length(layers)
@@ -114,6 +115,11 @@ function cycle(layers, inputs, synapses, p::Params)
                                                 t_pre = t_start + count
                                                 #updates weight for synapse to the post neuron
                                                 synapses[x-1][y][a] += stdp(t_pre, t_post, p)
+                                                stdp_counter += 1
+                                                #makes sure weights aren't negative
+                                                if synapses[x-1][y][a] < 0
+                                                    synapses[x-1][y][a] = 0
+                                                end
                                                 #removes spike examined from the array of spikes to not analyse the same spike twice
                                                 temp_spikes[count][x-1][a] = 0
                                                 not_found = false
@@ -138,5 +144,6 @@ function cycle(layers, inputs, synapses, p::Params)
             pos += 1
         end
     end
+    println("STDP Performed " * string(stdp_counter) * " times")
     [v_array, spikes, synapses]
 end

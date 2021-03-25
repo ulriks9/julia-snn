@@ -24,7 +24,9 @@ end
 #loads JLD file
 function load_arr(path::AbstractString)
     f = jldopen(path, mmaparrays=true)
-    convert_file(f["arr"])
+    o = convert_file(f["arr"])
+    close(f)
+    o
 end
 #converts from JLD's array format to something the network can use
 function convert_file(file)

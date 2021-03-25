@@ -2,30 +2,77 @@ include("dependencies.jl")
 include("network.jl")
 include("inputs.jl")
 include("params.jl")
+include("storage.jl")
+include("synapse.jl")
 
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
 function get_params()
-    Params(#= dt =# 1 / 10, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55,
-        #= ref =# 0.00, #= cl =# 10, #= hid =# 20, #= win =# 25, #= a_plus =# 10, #= a_minus =# 5,
-        #= tau_plus =# 5, #= tau_minus =# 5, #= in_w =# 1)
+    Params(#= dt =# 1 / 15, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55,
+        #= ref =# 0.00, #= cl =# 10, #= hid =# 20, #= win =# 25, #= a_plus =# 1, #= a_minus =# 1,
+        #= tau_plus =# 10, #= tau_minus =# 10, #= in_w =# 1)
 end
 #runs training on the network for specified amount of samples
 function run_training(n::Int64)
     classes = readdir("media\\training\\GTZAN")
     processed = String[]
-    spikes = Array[]
+    spikes = Int[]
 
     for i = 1 : n
-        class = classes[round(Int, rand() * length(classes))]
+        println("Epoch " * string(i) * ":")
+        class = classes[rand(1:length(classes))]
         samples = readdir("media\\training\\GTZAN\\" * class)
-        sample = "media\\training\\GTZAN\\" * class * "\\" * samples[round(Int, rand() * length(samples))]
+        sample = samples[rand(1:length(samples))]
+        path = "media\\training\\GTZAN\\" * class * "\\" * sample
+
         if !(sample in processed)
-            push!(spikes, run_cycle(sample))
+            @time push!(spikes, argmax(run_cycle(path)))
             push!(processed, sample)
+        #if a sample is skipped, reduce i to keep number of iterations the same
+        else
+            i -= 1
         end
     end
-    [processed, spikes]
+    hcat(processed, spikes)
+end
+#finds which class was most associated with an output neuron
+function assign_classes(arr)
+    s = String[]
+    classes = readdir("media\\training\\GTZAN")
+    counts = zeros(length(classes))
+    tracker = hcat(classes, counts)
+    neurons = Array{Int64}(1:length(classes))
+    genres = Array{String}(UndefInitializer(), length(classes))
+    out = hcat(neurons, genres)
+
+    for i in 1 : length(classes)
+        for j = 1 : length(arr[:,1])
+            if arr[j,2] == i
+                push!(s, arr[j,1])
+            end
+        end
+        for j = 1 : length(s)
+            for k = 1 : length(tracker[:,1])
+                if occursin(tracker[k,1], s[j])
+                    tracker[k,2] += 1
+                end
+            end
+        end
+        out[i,2] = tracker[argmax(tracker[:,2]),1]
+    end
+    out
+end
+#used for finding an invalid WAV file in the dataset
+function find_faulty()
+    classes = readdir("media\\training\\GTZAN")
+    for i = 1 : length(classes)
+        samples = readdir("media\\training\\GTZAN\\" * classes[i])
+        for j = 1 : length(samples)
+            println(samples[j] * ":")
+            w = wavread("media\\training\\GTZAN\\" * classes[i] * "\\" * samples[j])
+            println("Working")
+        end
+    end
 end
 #simulates voltage levels
 function v_sim()
@@ -98,7 +145,7 @@ function run_cycle(path::AbstractString)
     l = cycle(layers, inputs, synapses, p)
     s = l[2]
 
-    save_arr(l[3], "data\\synapses.jl")
+    save_arr(l[3], "data\\synapses.jld")
 
     spikes = zeros(p.cl)
 
