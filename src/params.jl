@@ -16,7 +16,7 @@ struct Params
     #number of hidden neurons
     hid::Int8
     #STDP window
-    win::Int8
+    win::Int64
     #A plus STDP parameter
     a_plus::Float64
     #A minus STDP parameter

@@ -16,7 +16,7 @@ function l_reset(l, p::Params)
     l
 end
 
-function cycle(layers, inputs, synapses, p::Params)
+function cycle(layers, inputs, synapses, p::Params, stdp_b)
     #useful for setting parameters
     stdp_counter = 0
     #simulation time, set to the amount of timesteps of the song
@@ -85,52 +85,54 @@ function cycle(layers, inputs, synapses, p::Params)
                     v_array[i][m][n] = v
                     layers[m][n] = v
                 end
-                #occurs every p.win timesteps
-                #current implementation of STDP
-                if i % p.win == 0 && i > 0
-                    t_start = i - p.win + 1
-                    t_end = i
-                    t_curr = t_start
-                    t_pre = t_start
-                    t_post = t_start
-                    #creates a sub array of spikes in the time window specified
-                    temp_spikes = stdp_spikes[t_start:t_end]
-                    #iterates through layers, starts at 2 as layer 1 has constant weights
-                    for x = 2 : length(layers)
-                        #iterates through neurons of that layer
-                        for y = 1 : length(layers[x])
-                            #iterates through timesteps in window
-                            for z = 1 : p.win
-                                #finds when neuron spiked
-                                if temp_spikes[z][x][y] > 0
-                                    t_post = t_curr
-                                    #iterates through neurons of previous layer
-                                    for a = 1 : length(layers[x-1])
-                                        not_found = true
-                                        count = 1
-                                        #iterates through timesteps in window
-                                        while not_found && count < p.win
-                                            #finds when pre neuron spiked EITHER a or y
-                                            if temp_spikes[count][x-1][a] > 0
-                                                t_pre = t_start + count
-                                                #updates weight for synapse to the post neuron
-                                                synapses[x-1][y][a] += stdp(t_pre, t_post, p)
-                                                stdp_counter += 1
-                                                #makes sure weights aren't negative
-                                                if synapses[x-1][y][a] < 0
-                                                    synapses[x-1][y][a] = 0
+                if stdp_b
+                    #occurs every p.win timesteps
+                    #current implementation of STDP
+                    if i % p.win == 0 && i > 0
+                        t_start = i - p.win + 1
+                        t_end = i
+                        t_curr = t_start
+                        t_pre = t_start
+                        t_post = t_start
+                        #creates a sub array of spikes in the time window specified
+                        temp_spikes = stdp_spikes[t_start:t_end]
+                        #iterates through layers, starts at 2 as layer 1 has constant weights
+                        for x = 2 : length(layers)
+                            #iterates through neurons of that layer
+                            for y = 1 : length(layers[x])
+                                #iterates through timesteps in window
+                                for z = 1 : p.win
+                                    #finds when neuron spiked
+                                    if temp_spikes[z][x][y] > 0
+                                        t_post = t_curr
+                                        #iterates through neurons of previous layer
+                                        for a = 1 : length(layers[x-1])
+                                            not_found = true
+                                            count = 1
+                                            #iterates through timesteps in window
+                                            while not_found && count < p.win
+                                                #finds when pre neuron spiked EITHER a or y
+                                                if temp_spikes[count][x-1][a] > 0
+                                                    t_pre = t_start + count
+                                                    #updates weight for synapse to the post neuron
+                                                    synapses[x-1][y][a] += stdp(t_pre, t_post, p)
+                                                    stdp_counter += 1
+                                                    #makes sure weights aren't negative
+                                                    if synapses[x-1][y][a] < 0
+                                                        synapses[x-1][y][a] = 0
+                                                    end
+                                                    #removes spike examined from the array of spikes to not analyse the same spike twice
+                                                    temp_spikes[count][x-1][a] = 0
+                                                    not_found = false
                                                 end
-                                                #removes spike examined from the array of spikes to not analyse the same spike twice
-                                                temp_spikes[count][x-1][a] = 0
-                                                not_found = false
+                                                count += 1
                                             end
-                                            count += 1
                                         end
+                                        #removes spike examined from temporary array of spikes
+                                        temp_spikes[z][x][y] = 0
                                     end
-                                    #removes spike examined from temporary array of spikes
-                                    temp_spikes[z][x][y] = 0
+                                    t_curr += 1
                                 end
-                                t_curr += 1
                             end
                         end
                     end

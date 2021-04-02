@@ -8,9 +8,9 @@ include("synapse.jl")
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
 function get_params()
-    Params(#= dt =# 1 / 15, #= tau =# 4, #= v_t =# 20, #= v_0 =# -70, #= v =# -55,
-        #= ref =# 0.00, #= cl =# 10, #= hid =# 20, #= win =# 25, #= a_plus =# 1, #= a_minus =# 1,
-        #= tau_plus =# 10, #= tau_minus =# 10, #= in_w =# 1)
+    Params(#= dt =# 1 / 5, #= tau =# 4, #= v_t =# 30, #= v_0 =# -70, #= v =# -55,
+        #= ref =# 0.00, #= cl =# 10, #= hid =# 20, #= win =# 25, #= a_plus =# 0.05, #= a_minus =# 0.01,
+        #= tau_plus =# 20, #= tau_minus =# 20, #= in_w =# 1)
 end
 #runs training on the network for specified amount of samples
 function run_training(n::Int64)
@@ -26,7 +26,7 @@ function run_training(n::Int64)
         path = "media\\training\\GTZAN\\" * class * "\\" * sample
 
         if !(sample in processed)
-            @time push!(spikes, argmax(run_cycle(path)))
+            @time push!(spikes, argmax(run_cycle(path, true)))
             push!(processed, sample)
         #if a sample is skipped, reduce i to keep number of iterations the same
         else
@@ -82,7 +82,7 @@ function v_sim()
     p = get_params()
 
     println("cycle method time:")
-    @time l = cycle(layers, inputs, synapses, p)
+    @time l = cycle(layers, inputs, synapses, p, false)
 
     v_levels = get_parray(l[1], 1, 5, 500)
 
@@ -111,8 +111,8 @@ function get_layers()
     p = get_params()
     [fill(p.v, input_res), fill(p.v, p.hid), fill(p.v, p.cl)]
 end
-#returns array of synapses with random floating point values in range 0:1
-function get_synapses()
+#returns array of synapses with random floating point values from 0 to max
+function get_synapses(max)
     p = get_params()
 
     layer_1 = Array{Array}(UndefInitializer(), p.hid)
@@ -120,11 +120,11 @@ function get_synapses()
 
     for i = 1 : length(layer_1)
         layer_1[i] = rand(input_res)
-        layer_1[i] = scale(layer_1[i], 0, 100)
+        layer_1[i] = scale(layer_1[i], 0, max)
     end
     for i = 1 : length(layer_2)
         layer_2[i] = rand(p.hid)
-        layer_2[i] = scale(layer_2[i], 0, 100)
+        layer_2[i] = scale(layer_2[i], 0, max)
     end
     [layer_1, layer_2]
 end
@@ -137,12 +137,18 @@ function get_parray(in, l, n, c)
     resize!(a, c)
 end
 #runs one training cycle with specified input, returns # of times output neurons spiked
-function run_cycle(path::AbstractString)
+function run_cycle(path::AbstractString, stdp)
     p = get_params()
     layers = get_layers()
     inputs = get_mfcc(path)
     synapses = load_arr("data\\synapses.jld")
-    l = cycle(layers, inputs, synapses, p)
+
+    if stdp
+        l = cycle(layers, inputs, synapses, p, true)
+    else
+        l = cycle(layers, inputs, synapses, p, false)
+    end
+
     s = l[2]
 
     save_arr(l[3], "data\\synapses.jld")

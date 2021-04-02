@@ -6,7 +6,7 @@ function get_spectro(path::String)
     id = wavread(path)
     i = id[1]
     i = power(spectrogram(i[:,1], round(Int, 25e-3 * id[2]), window=hanning))
-    i = scale(i, 0, 103000)
+    i = scale(i, 0, 80000)
     i
 end
 #scales array between specified range
@@ -23,5 +23,5 @@ end
 function get_mfcc(path::AbstractString)
     w = wavread(path)
     m = mfcc(w[1], w[2])
-    scale(m[1], 0, 1000)
+    scale(m[1], 0, 250)
 end
