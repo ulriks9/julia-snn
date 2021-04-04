@@ -27,4 +27,20 @@ struct Params
     tau_minus::Float64
     #weight for input neurons (scales inputs)
     in_w::Float64
+    #STDP initial trace
+    tr::Float64
+    #STDP learning rate
+    l_rate::Float64
+    #STDP depression rate
+    d_rate::Float64
+    #STDP target trace
+    tar::Float64
+    #STDP max weight
+    w_max::Float64
+    #STDP weight dependence
+    w_d::Float64
+    #STDP synapse decay time constant
+    tau_g::Float64
+    #LIF decay coefficient
+    decay::Float64
 end

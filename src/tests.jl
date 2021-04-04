@@ -8,9 +8,10 @@ include("synapse.jl")
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
 function get_params()
-    Params(#= dt =# 1 / 5, #= tau =# 4, #= v_t =# 30, #= v_0 =# -70, #= v =# -55,
-        #= ref =# 0.00, #= cl =# 10, #= hid =# 20, #= win =# 25, #= a_plus =# 0.05, #= a_minus =# 0.01,
-        #= tau_plus =# 20, #= tau_minus =# 20, #= in_w =# 1)
+    Params(#= dt =# 1 / 5, #= tau =# 50, #= v_t =# 30, #= v_0 =# -70, #= v =# -55,
+        #= ref =# 0.00, #= cl =# 10, #= hid =# 30, #= win =# 25, #= a_plus =# 0.05, #= a_minus =# 0.01,
+        #= tau_plus =# 20, #= tau_minus =# 20, #= in_w =# 0.5, #= tr =# 13, #= l_rate =# 1e-6,
+        #= d_rate =# 1e-6, #= tar =# 0, #= w_max =# 1000, #= w_d =# 1, #= tau_g =# 2.5, #= decay =# 0.01)
 end
 #runs training on the network for specified amount of samples
 function run_training(n::Int64)
@@ -34,6 +35,38 @@ function run_training(n::Int64)
         end
     end
     hcat(processed, spikes)
+end
+
+function train(n::Int64)
+    samples = String[]
+    itr = walkdir("media\\training\\GTZAN")
+    f = first(itr)
+
+    #creates array of paths of all samples
+    for i in itr
+        for j = 1 : length(i[3])
+            push!(samples, i[1] * "\\" * i[3][j])
+        end
+    end
+
+    for i = 1 : n
+        println("")
+        println("------------------------------------------------------------------------")
+        println("")
+        println("Epoch " * string(i) * ":")
+        println("")
+
+        r = rand(1:length(samples))
+        sample = samples[r]
+
+        println("Sample processed: " * sample)
+        println("")
+
+        @time first = run_cycle(sample, true)
+        println("")
+
+        println("First neuron to spike: " * string(first))
+    end
 end
 #finds which class was most associated with an output neuron
 function assign_classes(arr)
@@ -75,7 +108,7 @@ function find_faulty()
     end
 end
 #simulates voltage levels
-function v_sim()
+function v_sim(layer)
     layers = get_layers()
     synapses = load_arr("data\\synapses.jld")
     inputs = get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")
@@ -84,7 +117,7 @@ function v_sim()
     println("cycle method time:")
     @time l = cycle(layers, inputs, synapses, p, false)
 
-    v_levels = get_parray(l[1], 1, 5, 500)
+    v_levels = get_parray(l[1], layer, 1, 500)
 
     println("plot time:")
     @time plot(v_levels)
@@ -110,23 +143,6 @@ end
 function get_layers()
     p = get_params()
     [fill(p.v, input_res), fill(p.v, p.hid), fill(p.v, p.cl)]
-end
-#returns array of synapses with random floating point values from 0 to max
-function get_synapses(max)
-    p = get_params()
-
-    layer_1 = Array{Array}(UndefInitializer(), p.hid)
-    layer_2 = Array{Array}(UndefInitializer(), p.cl)
-
-    for i = 1 : length(layer_1)
-        layer_1[i] = rand(input_res)
-        layer_1[i] = scale(layer_1[i], 0, max)
-    end
-    for i = 1 : length(layer_2)
-        layer_2[i] = rand(p.hid)
-        layer_2[i] = scale(layer_2[i], 0, max)
-    end
-    [layer_1, layer_2]
 end
 #converts array from network to something Plots.jl can work with
 function get_parray(in, l, n, c)
@@ -162,5 +178,13 @@ function run_cycle(path::AbstractString, stdp)
             end
         end
     end
-    spikes
+
+    first = 0
+    for i = 1 : length(s), j = 1 : length(s[i][length(s[i])])
+        if s[i][length(s[i])][j] > 0
+            first = j
+            break
+        end
+    end
+    first
 end

@@ -31,11 +31,13 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
     #initializes arrays with correct structure
     for x = 1 : length(spikes)
         spikes[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
-        stdp_spikes[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
         v_array[x] = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
     end
     #refractory periods
     ref = [zeros(input_res), zeros(p.hid), zeros(p.cl)]
+    #STDP traces
+    pre_traces = get_traces()
+    post_traces = get_traces()
     #index
     i = 1
     #time set to 0
@@ -56,7 +58,6 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
                     v_array[i][m][n] = p.v_0
                     layers[m][n] = p.v_0
                     spikes[i][m][n] = 0
-                    stdp_spikes[i][m][n] = 0
                     ref[m][n] -= 1
                     continue
                 end
@@ -77,65 +78,58 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
                 #if voltage is above threshold, produce spike
                 if v >= p.v_t
                     spikes[i][m][n] = p.v_t
-                    stdp_spikes[i][m][n] = p.v_t
                     layers[m][n] = p.v_t
                     v_array[i][m][n] = p.v_t
                     ref[m][n] = 1
-                else
-                    v_array[i][m][n] = v
-                    layers[m][n] = v
-                end
-                if stdp_b
-                    #occurs every p.win timesteps
-                    #current implementation of STDP
-                    if i % p.win == 0 && i > 0
-                        t_start = i - p.win + 1
-                        t_end = i
-                        t_curr = t_start
-                        t_pre = t_start
-                        t_post = t_start
-                        #creates a sub array of spikes in the time window specified
-                        temp_spikes = stdp_spikes[t_start:t_end]
-                        #iterates through layers, starts at 2 as layer 1 has constant weights
-                        for x = 2 : length(layers)
-                            #iterates through neurons of that layer
-                            for y = 1 : length(layers[x])
-                                #iterates through timesteps in window
-                                for z = 1 : p.win
-                                    #finds when neuron spiked
-                                    if temp_spikes[z][x][y] > 0
-                                        t_post = t_curr
-                                        #iterates through neurons of previous layer
-                                        for a = 1 : length(layers[x-1])
-                                            not_found = true
-                                            count = 1
-                                            #iterates through timesteps in window
-                                            while not_found && count < p.win
-                                                #finds when pre neuron spiked EITHER a or y
-                                                if temp_spikes[count][x-1][a] > 0
-                                                    t_pre = t_start + count
-                                                    #updates weight for synapse to the post neuron
-                                                    synapses[x-1][y][a] += stdp(t_pre, t_post, p)
-                                                    stdp_counter += 1
-                                                    #makes sure weights aren't negative
-                                                    if synapses[x-1][y][a] < 0
-                                                        synapses[x-1][y][a] = 0
-                                                    end
-                                                    #removes spike examined from the array of spikes to not analyse the same spike twice
-                                                    temp_spikes[count][x-1][a] = 0
-                                                    not_found = false
-                                                end
-                                                count += 1
-                                            end
-                                        end
-                                        #removes spike examined from temporary array of spikes
-                                        temp_spikes[z][x][y] = 0
-                                    end
-                                    t_curr += 1
-                                end
+                    #performs STDP if toggled
+                    if stdp_b
+                        if m == 1
+                            #first layer neurons can only leave presynaptic traces
+                            for a = 1 : length(pre_traces[m])
+                                pre_traces[m][a][n] += p.tr
+                            end
+                            #performs weight depression
+                            for a = 1 : length(post_traces[m][n])
+                                #updates weight based on strength of trace left by the postsynaptic neuron
+                                synapses[m][n][a] += -(p.d_rate * post_traces[m][n][a] * synapses[m][n][a] ^ p.w_d)
+                                stdp_counter += 1
+                            end
+                        elseif m == 2
+                            #leaves pre and postsynaptic traces
+                            for a = 1 : length(pre_traces[m])
+                                pre_traces[m][a][n] += p.tr
+                            end
+                            for a = 1 : length(synapses[m-1][n])
+                                post_traces[m-1][n][a]
+                            end
+                            #performs weight potentiation
+                            for a = 1 : length(pre_traces[m-1][n])
+                                #updates weight based on strength of trace left by the presynaptic neuron
+                                synapses[m-1][n][a] += p.l_rate * (pre_traces[m-1][n][a] - p.tar) * (p.w_max - synapses[m-1][n][a]) ^ p.w_d
+                                stdp_counter += 1
+                            end
+                            #performs weight depression
+                            for a = 1 : length(post_traces[m])
+                                #updates weight based on strength of trace left by the postsynaptic neuron
+                                synapses[m][a][n] += -(p.d_rate * post_traces[m][a][n] * synapses[m][a][n] ^ p.w_d)
+                                stdp_counter += 1
+                            end
+                        else
+                            #leaves postsynaptic traces
+                            for a = 1 : length(post_traces[m-1][n])
+                                post_traces[m-1][n][a] += p.tr
+                            end
+                            #performs weight potentiation
+                            for a = 1 : length(pre_traces[m-1][n])
+                                #updates weight based on strength of trace left by the presynaptic neuron
+                                synapses[m-1][n][a] += p.l_rate * (pre_traces[m-1][n][a] - p.tar) * (p.w_max - synapses[m-1][n][a]) ^ p.w_d
+                                stdp_counter += 1
                             end
                         end
                     end
+                else
+                    v_array[i][m][n] = v
+                    layers[m][n] = v
                 end
             end
         end
@@ -145,7 +139,11 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
         if t % 1 == 0
             pos += 1
         end
+        #decays traces at each timestep
+        pre_traces = decay(pre_traces, p)
+        post_traces = decay(post_traces, p)
     end
+    save_arr(pre_traces, "data\\traces.jld")
     println("STDP Performed " * string(stdp_counter) * " times")
     [v_array, spikes, synapses]
 end
