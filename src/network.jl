@@ -4,7 +4,7 @@ include("neuron.jl")
 include("params.jl")
 include("storage.jl")
 
-#sets neurons spiked to reset
+#reset neurons that have spiked
 function l_reset(l, p::Params)
     for i = 1 : length(l)
         for j = length(l[i])
@@ -15,7 +15,7 @@ function l_reset(l, p::Params)
     end
     l
 end
-
+#runs the network through an input sample
 function cycle(layers, inputs, synapses, p::Params, stdp_b)
     #useful for setting parameters
     stdp_counter = 0
@@ -92,6 +92,7 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
                             for a = 1 : length(post_traces[m][n])
                                 #updates weight based on strength of trace left by the postsynaptic neuron
                                 synapses[m][n][a] += -(p.d_rate * post_traces[m][n][a] * synapses[m][n][a] ^ p.w_d)
+                                post_traces[m][n][a] = 0
                                 stdp_counter += 1
                             end
                         elseif m == 2
@@ -106,12 +107,14 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
                             for a = 1 : length(pre_traces[m-1][n])
                                 #updates weight based on strength of trace left by the presynaptic neuron
                                 synapses[m-1][n][a] += p.l_rate * (pre_traces[m-1][n][a] - p.tar) * (p.w_max - synapses[m-1][n][a]) ^ p.w_d
+                                pre_traces[m-1][n][a] = 0
                                 stdp_counter += 1
                             end
                             #performs weight depression
                             for a = 1 : length(post_traces[m])
                                 #updates weight based on strength of trace left by the postsynaptic neuron
                                 synapses[m][a][n] += -(p.d_rate * post_traces[m][a][n] * synapses[m][a][n] ^ p.w_d)
+                                post_traces[m][a][n] = 0
                                 stdp_counter += 1
                             end
                         else
@@ -123,6 +126,7 @@ function cycle(layers, inputs, synapses, p::Params, stdp_b)
                             for a = 1 : length(pre_traces[m-1][n])
                                 #updates weight based on strength of trace left by the presynaptic neuron
                                 synapses[m-1][n][a] += p.l_rate * (pre_traces[m-1][n][a] - p.tar) * (p.w_max - synapses[m-1][n][a]) ^ p.w_d
+                                pre_traces[m-1][n][a] = 0
                                 stdp_counter += 1
                             end
                         end

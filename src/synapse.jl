@@ -10,7 +10,7 @@ function stdp(pre, post, p)
 end
 #resets the synapses to the standard of get_synapses()
 function reset_synapses()
-    save_arr(get_synapses(100), "data\\synapses.jld")
+    save_arr(get_synapses(1), "data\\synapses.jld")
 end
 #returns array of synapses with random floating point values from 0 to max
 function get_synapses(max)

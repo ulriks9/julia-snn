@@ -7,41 +7,18 @@ include("synapse.jl")
 
 global input_res = length(get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")[1,:])
 
+#returns an object of type Params which stores the hyperparameters for the network
 function get_params()
-    Params(#= dt =# 1 / 5, #= tau =# 50, #= v_t =# 30, #= v_0 =# -70, #= v =# -55,
-        #= ref =# 0.00, #= cl =# 10, #= hid =# 30, #= win =# 25, #= a_plus =# 0.05, #= a_minus =# 0.01,
-        #= tau_plus =# 20, #= tau_minus =# 20, #= in_w =# 0.5, #= tr =# 13, #= l_rate =# 1e-6,
-        #= d_rate =# 1e-6, #= tar =# 0, #= w_max =# 1000, #= w_d =# 1, #= tau_g =# 2.5, #= decay =# 0.01)
-end
-#runs training on the network for specified amount of samples
-function run_training(n::Int64)
-    classes = readdir("media\\training\\GTZAN")
-    processed = String[]
-    spikes = Int[]
-
-    for i = 1 : n
-        println("Epoch " * string(i) * ":")
-        class = classes[rand(1:length(classes))]
-        samples = readdir("media\\training\\GTZAN\\" * class)
-        sample = samples[rand(1:length(samples))]
-        path = "media\\training\\GTZAN\\" * class * "\\" * sample
-
-        if !(sample in processed)
-            @time push!(spikes, argmax(run_cycle(path, true)))
-            push!(processed, sample)
-        #if a sample is skipped, reduce i to keep number of iterations the same
-        else
-            i -= 1
-        end
-    end
-    hcat(processed, spikes)
+    Params(#= dt =# 1 / 5, #= tau =# 0.15, #= v_t =# 30, #= v_0 =# -70, #= v =# -55,
+        #= ref =# 0.00, #= cl =# 10, #= hid =# 200, #= in_w =# 0.5, #= tr =# 0.25, #= l_rate =# 1e-7,
+        #= d_rate =# 1e-7, #= tar =# 0, #= w_max =# 10, #= w_d =# 2, #= tau_g =# 5, #= decay =# 1e-2)
 end
 
+#Runs n amount of training epochs with random samples
 function train(n::Int64)
     samples = String[]
     itr = walkdir("media\\training\\GTZAN")
     f = first(itr)
-
     #creates array of paths of all samples
     for i in itr
         for j = 1 : length(i[3])
@@ -58,6 +35,47 @@ function train(n::Int64)
 
         r = rand(1:length(samples))
         sample = samples[r]
+        deleteat!(samples, r)
+
+        println("Sample processed: " * sample)
+        println("")
+
+        @time first = run_cycle(sample, true)
+        println("")
+
+        println("First neuron to spike: " * string(first))
+    end
+end
+#trains the network on every sample of a genre
+function train_genre(genre::String)
+    itr = walkdir("media\\training\\GTZAN")
+    genres = first(itr)[2]
+    samples = Array{Array}(UndefInitializer(), length(genres))
+
+    for i = 1 : length(genres)
+        samples[i] = String[]
+    end
+
+    count = 1
+    for i in itr
+        for j = 1 : length(i[3])
+            push!(samples[count], i[1] * "\\" * i[3][j])
+        end
+        count += 1
+    end
+
+    training_samples = samples[findfirst(isequal(genre), genres)]
+
+    for i = 1 : length(training_samples)
+        println("")
+        println("------------------------------------------------------------------------")
+        println("")
+        println("Epoch " * string(i) * ":")
+        println("")
+
+        r = rand(1:length(training_samples))
+        sample = training_samples[r]
+        deleteat!(training_samples, r)
 
         println("Sample processed: " * sample)
         println("")
@@ -95,7 +113,7 @@ function assign_classes(arr)
     end
     out
 end
-#used for finding an invalid WAV file in the dataset
+#used for finding an invalid WAV files in the dataset
 function find_faulty()
     classes = readdir("media\\training\\GTZAN")
     for i = 1 : length(classes)
@@ -107,8 +125,8 @@ function find_faulty()
         end
     end
 end
-#simulates voltage levels
-function v_sim(layer)
+#simulates membrane potential of the first neuron of specified layer
+function v_sim(layer::Int64)
     layers = get_layers()
     synapses = load_arr("data\\synapses.jld")
     inputs = get_mfcc("media\\training\\GTZAN\\rock\\rock.00000.wav")
@@ -124,7 +142,7 @@ function v_sim(layer)
     xlabel!("Time")
     ylabel!("Membrane Potential (mV)")
 end
-#simulates spikes
+#simulates spikes of the first neuron of the first layer
 function s_sim()
     layers = get_layers()
     synapses = load_arr("data\\synapses.jld")
@@ -133,7 +151,7 @@ function s_sim()
 
     @time l = cycle(layers, inputs, synapses, p)
 
-    s = get_parray(l[2], 1, 5, 500)
+    s = get_parray(l[2], 1, 1, 500)
 
     @time plot(s)
     xlabel!("Time")
@@ -153,7 +171,7 @@ function get_parray(in, l, n, c)
     resize!(a, c)
 end
 #runs one training cycle with specified input, returns # of times output neurons spiked
-function run_cycle(path::AbstractString, stdp)
+function run_cycle(path::String, stdp)
     p = get_params()
     layers = get_layers()
     inputs = get_mfcc(path)
@@ -186,5 +204,5 @@ function run_cycle(path::AbstractString, stdp)
             break
         end
     end
-    first
+    [spikes,first]
 end

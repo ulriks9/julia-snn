@@ -20,8 +20,8 @@ function scale(arr, a, b)
     arr
 end
 #extracts MFCCs from specified WAV file
-function get_mfcc(path::AbstractString)
+function get_mfcc(path::String)
     w = wavread(path)
     m = mfcc(w[1], w[2])
-    scale(m[1], 0, 1000)
+    scale(m[1], 0, 10)
 end
